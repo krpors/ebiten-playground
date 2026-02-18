@@ -14,11 +14,21 @@ type State interface {
 
 type Game struct {
 	currentState State
+	text         *ImageText
 }
 
 func NewGame() *Game {
 	game := &Game{}
 	game.currentState = &StateTest{}
+
+	font, err := NewImageFont("font.png", " abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-=_+|/\\:;'\"<>,.?")
+	if err != nil {
+		panic(err)
+	}
+
+	game.text = NewImageText(font)
+	game.text.SetText("The quick brown foxy!")
+
 	return game
 }
 
@@ -34,6 +44,8 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	if g.currentState != nil {
 		g.currentState.Draw(screen)
 	}
+
+	g.text.Draw(screen)
 }
 
 func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {

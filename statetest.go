@@ -34,7 +34,7 @@ func (s *StateTest) Draw(screen *ebiten.Image) {
 
 	op = &ebiten.DrawImageOptions{}
 	op.GeoM.Translate(-float64(path.Bounds().Dx())/2, -float64(path.Bounds().Dy())/2)
-	op.GeoM.Rotate(float64(s.Radians))
+	op.GeoM.Rotate(-float64(s.Radians))
 	op.GeoM.Translate(90, 90)
 	op.ColorScale.SetR(1.0)
 	op.ColorScale.SetG(0)
