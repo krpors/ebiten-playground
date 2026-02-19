@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"math/rand"
 
 	"github.com/hajimehoshi/ebiten/v2"
 )
@@ -27,7 +28,7 @@ func NewGame() *Game {
 	}
 
 	game.text = NewImageText(font)
-	game.text.SetText("The quick brown foxy!")
+	game.text.SetText("The quick brown foxeh...\n... jumps over the lazy doggeh")
 
 	return game
 }
@@ -45,7 +46,16 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		g.currentState.Draw(screen)
 	}
 
-	g.text.Draw(screen)
+	opts := &ebiten.DrawImageOptions{}
+	opts.ColorScale.SetR(rand.Float32())
+	opts.ColorScale.SetG(rand.Float32())
+	opts.ColorScale.SetB(rand.Float32())
+	opts.ColorScale.SetA(1)
+	opts.GeoM.Translate(4*rand.Float64(), 4*rand.Float64())
+	// opts.GeoM.Scale(rand.Float64()*2+1, rand.Float64()*2+1)
+	opts.GeoM.Translate(320/2-50, 240/2-50)
+
+	g.text.Draw(screen, opts)
 }
 
 func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {

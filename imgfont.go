@@ -11,7 +11,8 @@ import (
 
 type ImageFont struct {
 	glyphs string
-	// imgs   []image.Image
+	Height int
+	// todo rune
 	imgmap map[byte](*ebiten.Image)
 }
 
@@ -30,6 +31,8 @@ func NewImageFont(file, glyphs string) (*ImageFont, error) {
 	if err != nil {
 		return nil, fmt.Errorf("could not decode file %s as PNG: %v", file, err)
 	}
+
+	font.Height = decodedImage.Bounds().Dy()
 
 	separatorColor := decodedImage.At(0, 0)
 	glyphIndex := 0
@@ -88,12 +91,21 @@ func (i *ImageText) SetText(text string) {
 	i.TextImage = ebiten.NewImage(320, 240)
 
 	x := 0.0
+	y := 0.0
 	for _, r := range text {
+		if r == '\n' {
+			y += float64(i.font.Height)
+			x = 0
+			continue
+		}
+
 		glyph := i.font.imgmap[byte(r)]
 		opts := &ebiten.DrawImageOptions{}
-		opts.GeoM.Translate(x, 0)
+		opts.GeoM.Translate(x, y)
 		i.TextImage.DrawImage(glyph, opts)
+
 		x += float64(glyph.Bounds().Dx() + 1)
+
 	}
 
 	// calculate max width of image based on string
@@ -104,13 +116,6 @@ func (i *ImageText) Update() {
 
 }
 
-func (i *ImageText) Draw(target *ebiten.Image) {
-	opts := &ebiten.DrawImageOptions{}
-	opts.GeoM.Translate(20, 20)
-	opts.ColorScale.SetR(0.5)
-	opts.ColorScale.SetG(0.2)
-	opts.ColorScale.SetB(0.1)
-	opts.ColorScale.SetA(0.5)
-	opts.GeoM.Scale(2, 2)
+func (i *ImageText) Draw(target *ebiten.Image, opts *ebiten.DrawImageOptions) {
 	target.DrawImage(i.TextImage, opts)
 }
