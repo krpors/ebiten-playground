@@ -5,21 +5,21 @@ import (
 	"image"
 	"image/png"
 	"os"
+	"unicode/utf8"
 
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
 type ImageFont struct {
 	glyphs string
-	Height int
-	// todo rune
-	imgmap map[byte](*ebiten.Image)
+	height int
+	imgmap map[rune](*ebiten.Image)
 }
 
 func NewImageFont(file, glyphs string) (*ImageFont, error) {
 	font := &ImageFont{
 		glyphs: glyphs,
-		imgmap: make(map[byte](*ebiten.Image)),
+		imgmap: make(map[rune](*ebiten.Image)),
 	}
 
 	derp, err := os.Open(file)
@@ -32,12 +32,14 @@ func NewImageFont(file, glyphs string) (*ImageFont, error) {
 		return nil, fmt.Errorf("could not decode file %s as PNG: %v", file, err)
 	}
 
-	font.Height = decodedImage.Bounds().Dy()
+	font.height = decodedImage.Bounds().Dy()
 
 	separatorColor := decodedImage.At(0, 0)
 	glyphIndex := 0
 	glyphWidth := 0
 	lastSeparatorIndex := 0
+
+	var images []*ebiten.Image
 
 	for x := 0; x < decodedImage.Bounds().Dx(); x++ {
 		// Check if the pixel at the current x position is our designated separator color.
@@ -51,9 +53,9 @@ func NewImageFont(file, glyphs string) (*ImageFont, error) {
 				}
 
 				subImage := decodedImage.(*image.NRGBA).SubImage(rect)
-				bleh := ebiten.NewImageFromImage(subImage)
-				// todo: check if glyphindex is larger than string length, or else panic
-				font.imgmap[glyphs[glyphIndex]] = bleh
+				eimage := ebiten.NewImageFromImage(subImage)
+
+				images = append(images, eimage)
 
 				glyphIndex++
 			}
@@ -67,8 +69,14 @@ func NewImageFont(file, glyphs string) (*ImageFont, error) {
 		glyphWidth++
 	}
 
-	if len(glyphs) != len(font.imgmap) {
-		return nil, fmt.Errorf("%d glyphs wanted, but image contained %d glyphs", len(glyphs), len(font.imgmap))
+	if utf8.RuneCountInString(glyphs) != len(images) {
+		return nil, fmt.Errorf("%d glyphs (runes) wanted, but image contained %d glyphs", len(glyphs), len(images))
+	}
+
+	counter := 0
+	for _, r := range glyphs {
+		font.imgmap[r] = images[counter]
+		counter++
 	}
 
 	return font, nil
@@ -79,7 +87,7 @@ type ImageText struct {
 
 	letterSpacing int
 	lineSpacing   int
-	TextImage     *ebiten.Image
+	textImage     *ebiten.Image
 }
 
 func NewImageText(font *ImageFont) *ImageText {
@@ -90,39 +98,49 @@ func NewImageText(font *ImageFont) *ImageText {
 	}
 }
 
+// calculateImageSize calculates the maximum size which is required to draw
+// all the glyphs on a target image.
 func (i *ImageText) calculateImageSize(text string) (width int, height int) {
-	maxX, maxY := 0, i.font.Height
+	maxX, maxY := 0, i.font.height
 	for _, r := range text {
 		if r == '\n' {
-			maxY += i.font.Height + i.lineSpacing
+			maxY += i.font.height + i.lineSpacing
 			continue
 		}
 
-		glyph := i.font.imgmap[byte(r)]
-		maxX += glyph.Bounds().Dx() + i.letterSpacing
+		if glyph, ok := i.font.imgmap[r]; ok {
+			maxX += glyph.Bounds().Dx() + i.letterSpacing
+		} else {
+			fmt.Printf("Unable to calculate image size correctly, because the rune %s is not in the image map\n", string(r))
+		}
 	}
 	return maxX, maxY
 }
 
 func (i *ImageText) SetText(text string) {
 	width, height := i.calculateImageSize(text)
-	i.TextImage = ebiten.NewImage(width, height)
+	i.textImage = ebiten.NewImage(width, height)
 
 	x := 0
 	y := 0
 	for _, r := range text {
 		if r == '\n' {
-			y += i.font.Height + i.lineSpacing
+			y += i.font.height + i.lineSpacing
 			x = 0
 			continue
 		}
 
-		glyph := i.font.imgmap[byte(r)]
-		opts := &ebiten.DrawImageOptions{}
-		opts.GeoM.Translate(float64(x), float64(y))
-		i.TextImage.DrawImage(glyph, opts)
+		if glyph, ok := i.font.imgmap[r]; ok {
+			opts := &ebiten.DrawImageOptions{}
+			opts.GeoM.Translate(float64(x), float64(y))
+			i.textImage.DrawImage(glyph, opts)
 
-		x += glyph.Bounds().Dx() + i.letterSpacing
+			x += glyph.Bounds().Dx() + i.letterSpacing
+		} else {
+			fmt.Printf("Rune %s not found?\n", string(r))
+			// TODO glyph not found, now what? probably draw some placeholder thing or some stuff
+		}
+
 	}
 }
 
@@ -131,5 +149,5 @@ func (i *ImageText) Update() {
 }
 
 func (i *ImageText) Draw(target *ebiten.Image, opts *ebiten.DrawImageOptions) {
-	target.DrawImage(i.TextImage, opts)
+	target.DrawImage(i.textImage, opts)
 }
