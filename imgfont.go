@@ -77,39 +77,53 @@ func NewImageFont(file, glyphs string) (*ImageFont, error) {
 type ImageText struct {
 	font *ImageFont
 
-	TextImage *ebiten.Image
+	letterSpacing int
+	lineSpacing   int
+	TextImage     *ebiten.Image
 }
 
 func NewImageText(font *ImageFont) *ImageText {
 	return &ImageText{
-		font: font,
+		font:          font,
+		letterSpacing: 1,
+		lineSpacing:   -2,
 	}
 }
 
-func (i *ImageText) SetText(text string) {
-	// TODO: determine max image size before?
-	i.TextImage = ebiten.NewImage(320, 240)
-
-	x := 0.0
-	y := 0.0
+func (i *ImageText) calculateImageSize(text string) (width int, height int) {
+	maxX, maxY := 0, i.font.Height
 	for _, r := range text {
 		if r == '\n' {
-			y += float64(i.font.Height)
+			maxY += i.font.Height + i.lineSpacing
+			continue
+		}
+
+		glyph := i.font.imgmap[byte(r)]
+		maxX += glyph.Bounds().Dx() + i.letterSpacing
+	}
+	return maxX, maxY
+}
+
+func (i *ImageText) SetText(text string) {
+	width, height := i.calculateImageSize(text)
+	i.TextImage = ebiten.NewImage(width, height)
+
+	x := 0
+	y := 0
+	for _, r := range text {
+		if r == '\n' {
+			y += i.font.Height + i.lineSpacing
 			x = 0
 			continue
 		}
 
 		glyph := i.font.imgmap[byte(r)]
 		opts := &ebiten.DrawImageOptions{}
-		opts.GeoM.Translate(x, y)
+		opts.GeoM.Translate(float64(x), float64(y))
 		i.TextImage.DrawImage(glyph, opts)
 
-		x += float64(glyph.Bounds().Dx() + 1)
-
+		x += glyph.Bounds().Dx() + i.letterSpacing
 	}
-
-	// calculate max width of image based on string
-	// create image
 }
 
 func (i *ImageText) Update() {
