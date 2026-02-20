@@ -28,7 +28,7 @@ func NewGame() *Game {
 	}
 
 	game.text = NewImageText(font)
-	game.text.SetText("The quick brown foxeh...\n... jumps over the lazy doggehü")
+	game.text.SetText("The quick brown foxeh...\n... jumps over the lazy doggëh")
 
 	return game
 }
@@ -50,7 +50,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	opts.ColorScale.SetR(rand.Float32())
 	opts.ColorScale.SetG(rand.Float32())
 	opts.ColorScale.SetB(rand.Float32())
-	opts.ColorScale.SetA(1)
+	// opts.ColorScale.SetA(1)
 	opts.GeoM.Translate(4*rand.Float64(), 4*rand.Float64())
 	opts.GeoM.Translate(320/2-50, 240/2-50)
 	g.text.Draw(screen, opts)

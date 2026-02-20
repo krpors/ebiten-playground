@@ -3,11 +3,13 @@ package main
 import (
 	"fmt"
 	"image"
+	"image/color"
 	"image/png"
 	"os"
 	"unicode/utf8"
 
 	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/vector"
 )
 
 type ImageFont struct {
@@ -83,18 +85,23 @@ func NewImageFont(file, glyphs string) (*ImageFont, error) {
 }
 
 type ImageText struct {
-	font *ImageFont
+	font *ImageFont // The image font to use to draw the runes to the textImage.
 
-	letterSpacing int
-	lineSpacing   int
-	textImage     *ebiten.Image
+	letterSpacing int           // Letterspacing in pixels.
+	lineSpacing   int           // Linespacing in pixels.
+	textImage     *ebiten.Image // Target image where all the image glyphs are drawn to.
+	placeholder   *ebiten.Image // Placeholder if a rune cannot be found in the image font.
 }
 
 func NewImageText(font *ImageFont) *ImageText {
+	placeholder := ebiten.NewImage(8, font.height)
+	vector.FillRect(placeholder, 0, 0, 80, 80, color.RGBA{0xff, 0xff, 0xcc, 0xff}, false)
+
 	return &ImageText{
 		font:          font,
 		letterSpacing: 1,
 		lineSpacing:   -2,
+		placeholder:   placeholder,
 	}
 }
 
@@ -111,7 +118,9 @@ func (i *ImageText) calculateImageSize(text string) (width int, height int) {
 		if glyph, ok := i.font.imgmap[r]; ok {
 			maxX += glyph.Bounds().Dx() + i.letterSpacing
 		} else {
-			fmt.Printf("Unable to calculate image size correctly, because the rune %s is not in the image map\n", string(r))
+			// glyph is not found in the map, so use the placeholder to increase
+			// the width of the image instead.
+			maxX += i.placeholder.Bounds().Dx() + i.letterSpacing
 		}
 	}
 	return maxX, maxY
@@ -124,23 +133,26 @@ func (i *ImageText) SetText(text string) {
 	x := 0
 	y := 0
 	for _, r := range text {
-		if r == '\n' {
+		if r == '\n' || r == '\n' {
+			// Newline in a text, so increment the y position and reset the x to the beginning.
 			y += i.font.height + i.lineSpacing
 			x = 0
 			continue
 		}
 
-		if glyph, ok := i.font.imgmap[r]; ok {
-			opts := &ebiten.DrawImageOptions{}
-			opts.GeoM.Translate(float64(x), float64(y))
-			i.textImage.DrawImage(glyph, opts)
+		var glyphToDraw *ebiten.Image
 
-			x += glyph.Bounds().Dx() + i.letterSpacing
+		if glyph, ok := i.font.imgmap[r]; ok {
+			glyphToDraw = glyph
 		} else {
-			fmt.Printf("Rune %s not found?\n", string(r))
-			// TODO glyph not found, now what? probably draw some placeholder thing or some stuff
+			// rune not found, so draw a placeholder instead.
+			glyphToDraw = i.placeholder
 		}
 
+		opts := &ebiten.DrawImageOptions{}
+		opts.GeoM.Translate(float64(x), float64(y))
+		i.textImage.DrawImage(glyphToDraw, opts)
+		x += glyphToDraw.Bounds().Dx() + i.letterSpacing
 	}
 }
 
