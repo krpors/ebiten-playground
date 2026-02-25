@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-	"math/rand"
 
 	"github.com/hajimehoshi/ebiten/v2"
 )
@@ -20,7 +19,7 @@ type Game struct {
 
 func NewGame() *Game {
 	game := &Game{}
-	game.currentState = &StateTest{}
+	game.currentState = NewStateArt()
 
 	font, err := NewImageFont("font.png", " abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-=_+|/\\:;'\"<>,.?")
 	if err != nil {
@@ -45,15 +44,6 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	if g.currentState != nil {
 		g.currentState.Draw(screen)
 	}
-
-	opts := &ebiten.DrawImageOptions{}
-	opts.ColorScale.SetR(rand.Float32())
-	opts.ColorScale.SetG(rand.Float32())
-	opts.ColorScale.SetB(rand.Float32())
-	// opts.ColorScale.SetA(1)
-	opts.GeoM.Translate(4*rand.Float64(), 4*rand.Float64())
-	opts.GeoM.Translate(320/2-50, 240/2-50)
-	g.text.Draw(screen, opts)
 }
 
 func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {
